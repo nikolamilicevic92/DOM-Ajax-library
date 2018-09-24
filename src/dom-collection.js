@@ -1,3 +1,4 @@
+import { DOMSelector } from './dom';
 
 export class DOMCollection
 {
@@ -6,10 +7,20 @@ export class DOMCollection
     this.nodes = nodes;
   }
 
+
   empty()
   {
     this.html('');
     return this;
+  }
+
+  get(selector)
+  {
+    const nodes = DOMSelector(selector, this.nodes[0]);
+    if(nodes.length) {
+      return new DOMCollection(nodes);
+    }
+    return null;
   }
 
   prepend(nodes)
@@ -27,22 +38,32 @@ export class DOMCollection
 
   append(nodes)
   {
-    nodes.forEach(node => {
+    if(nodes.constructor === Array) {
+      nodes.forEach(node => {
+        if(node instanceof DOMCollection) {
+          this.nodes[0].appendChild(node.nodes[0]);
+        } else {
+          this.nodes[0].appendChild(node);
+        }
+      })
+    } else {
+      const node = nodes;
       if(node instanceof DOMCollection) {
         this.nodes[0].appendChild(node.nodes[0]);
       } else {
         this.nodes[0].appendChild(node);
       }
-    })
+    }
+   
     return this;
   }
 
   appendTo(parent)
   {
     if(parent instanceof DOMCollection) {
-      this.each(node => parent.nodes[0].appendChild(node));
+      this.each(node => parent.nodes[0].appendChild(node.dom()));
     } else {
-      this.each(node => parent.appendChild(node));
+      this.each(node => parent.appendChild(node.dom()));
     }
     return this;
   }
@@ -50,13 +71,17 @@ export class DOMCollection
   text(text = false)
   {
     if(text) {
-      this.nodes.forEach(node => node.innerText = text.trim());
+      for(let i = 0; i < this.nodes.length; i++) {
+        this.nodes[i].textContent = text;
+      }
     } else {
       if(this.nodes.length == 1) {
-        return this.nodes[0].innerText.trim();
+        return this.nodes[0].textContent;
       } else {
         const texts = [];
-        this.nodes.forEach(node => texts.push(node.innerText.trim()));
+        for(let i = 0; i < this.nodes.length; i++) {
+          texts.push(this.nodes[i].textContent);
+        }
         return texts;
       }
     }
@@ -66,14 +91,18 @@ export class DOMCollection
   html(html = false)
   {
     if(html) {
-      this.nodes.forEach(node => node.innerHTML = html);
+      for(let i = 0; i < this.nodes.length; i++) {
+        this.nodes[i].innerHTML = html;
+      }
     } else {
       if(this.nodes.length == 1) {
         return this.nodes[0].innerHTML;
       } else {
-        const htmls = [];
-        this.nodes.forEach(node => htmls.push(node.innerHTML));
-        return htmls;
+        const texts = [];
+        for(let i = 0; i < this.nodes.length; i++) {
+          texts.push(this.nodes[i].innerHTML);
+        }
+        return texts;
       }
     }
     return this;
@@ -82,13 +111,17 @@ export class DOMCollection
   value(value = false)
   {
     if(value) {
-      this.nodes.forEach(node => node.value = value.trim());
+      for(let i = 0; i < this.nodes.length; i++) {
+        this.nodes[i].value = value;
+      }
     } else {
       if(this.nodes.length == 1) {
-        return this.nodes[0].value.trim();
+        return this.nodes[0].value;
       } else {
         const values = [];
-        this.nodes.forEach(node => values.push(node.value.trim()));
+        for(let i = 0; i < this.nodes.length; i++) {
+          values.push(this.nodes[i].value);
+        }
         return values;
       }
     }
@@ -102,51 +135,94 @@ export class DOMCollection
 
   hide()
   {
-    this.addClass('hidden');
+    this.each(node => {
+      node.addClass('hidden');
+      node.css({display: 'none'});
+    })
     return this;
   }
 
   show()
   {
-    this.removeClass('hidden');
+    this.each(node => {
+      node.removeClass('hidden');
+      node.css({display: null});
+    })
     return this;
+  }
+
+  hasClass(className)
+  {
+    return this.nodes[0].classList.contains(className);
   }
 
   addClass(className)
   {
-    this.nodes.forEach(node => node.classList.add(className));
+    for(let i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].classList.add(className);
+    }
     return this;
   }
 
   removeClass(className)
   {
-    this.nodes.forEach(node => node.classList.remove(className));
+    for(let i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].classList.remove(className);
+    }
     return this;
   }
  
   toggleClass(className)
   {
-    this.nodes.forEach(node => {
-      if(node.classList.contains(className)) {
-        node.classList.remove(className);
+    for(let i = 0; i < this.nodes.length; i++) {
+      if(this.nodes[i].classList.contains(className)) {
+        this.nodes[i].classList.remove(className);
       } else {
-        node.classList.add(className);
+        this.nodes[i].classList.add(className);
+      }
+    }
+    return this;
+  }
+
+  die()
+  {
+    this.each(wrapper => {
+      const node = wrapper.dom();
+      node.parentNode.removeChild(node);
+    });
+  }
+
+  remove(node)
+  {
+    this.each(wrapper => {
+      if(node instanceof DOMCollection) {
+        node.each(single => {
+          wrapper.dom().removeChild(single.dom());
+        });
+      } else {
+        wrapper.dom().removeChild(node);
       }
     });
-    return this;
   }
 
   each(closure)
   {
-    this.nodes.forEach((node, index) => closure(node, index));
+    if(this.nodes.length === 1) {
+      closure(this, 0);
+    } else {
+      for(let i = 0; i < this.nodes.length; i++) {
+        closure(new DOMCollection([this.nodes[i]]), i);
+      }
+    }
     return this;
   }
+
 
   css(styles)
   {
     this.each(node => {
       for(let property in styles) {
-        node.style[property] = styles[property];
+        node.dom().style[property] = styles[property];
       }
     });
     return this;
@@ -155,13 +231,13 @@ export class DOMCollection
   attr(name, value = false)
   {
     if(value) {
-      this.each(node => node.setAttribute(name, value));
+      this.each(node => node.dom().setAttribute(name, value));
     } else {
       if(this.nodes.length == 1) {
         return this.nodes[0].getAttribute(name);
       } else {
         const attrs = [];
-        this.each(node => attrs.push(node.getAttribute(name)));
+        this.each(node => attrs.push(node.dom().getAttribute(name)));
         return attrs;
       }
     }
@@ -172,16 +248,12 @@ export class DOMCollection
   {
     this.each(node => { 
       let timeoutHandle;
-      node.addEventListener(event, ev => {
+      node.dom().addEventListener(event, ev => {
         if(delay) {
           clearTimeout(timeoutHandle);
-          let self = this;
-          if(this.nodes.length > 1) {
-            self = new DOMCollection([node]);
-          }
-          timeoutHandle = setTimeout(() => closure(self, ev), delay);
+          timeoutHandle = setTimeout(() => closure(node, ev), delay);
         } else {
-          closure(self, ev)
+          closure(node, ev)
         }
       });
     });
@@ -191,7 +263,7 @@ export class DOMCollection
   slideDown()
   {
     this.each(node => {
-      node.style.maxHeight = node.scrollHeight + 'px';
+      node.dom().style.maxHeight = node.dom().scrollHeight + 'px';
     });
     return this;
   }
@@ -199,10 +271,10 @@ export class DOMCollection
   toggleSlide()
   {
     this.each(node => {
-      if(node.style.maxHeight){
-        node.style.maxHeight = null;
+      if(node.dom().style.maxHeight){
+        node.dom().style.maxHeight = null;
       } else {
-        node.style.maxHeight = node.scrollHeight + "px";
+        node.dom().style.maxHeight = node.dom().scrollHeight + "px";
       } 
     });
     return this;
@@ -211,7 +283,7 @@ export class DOMCollection
   slideUp()
   {
     this.each(node => {
-      node.style.maxHeight = null;
+      node.dom().style.maxHeight = null;
     });
     return this;
   }

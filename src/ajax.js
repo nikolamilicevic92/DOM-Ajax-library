@@ -22,7 +22,13 @@ class Ajax
       this.xhttp.onreadystatechange = () => {
         if(this.xhttp.readyState == 4) {
           if(this.parseToJSON) {
-            resolve(JSON.parse(this.xhttp.responseText), this.xhttp.status);
+            let parsed = 'PARSE_ERROR';
+            try {
+              parsed = JSON.parse(this.xhttp.responseText);
+            } catch (e) {
+              console.error('Response could not be parsed to JSON: ', this.xhttp.responseText);
+            }
+            resolve(parsed, this.xhttp.status);
           } else {
             resolve(this.xhttp.responseText, this.xhttp.status);
           }
@@ -34,15 +40,17 @@ class Ajax
 
   sendRequest()
   {
-    if(this.method === 'GET' && this.query.length) {
-      this.url += '?' + this.makeQuery();
-    }
-    this.xhttp.open(this.method, this.url);
-    if(['POST', 'PUT', 'PATCH'].includes(this.method)) {
+    if(this.method === 'GET') {
+      if(this.query) {
+        this.open('GET', this.url + '?' + this.makeQuery());
+      } else {
+        this.open('GET', this.url);
+      }
+      this.send();
+    } else {
+      this.xhttp.open('POST', this.url);
       this.xhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
       this.xhttp.send(this.makeQuery());
-    } else {
-      this.xhttp.send();
     }
   }
 
@@ -60,23 +68,57 @@ class Ajax
   
   makeQuery()
   {
-    let query = this.isLocal ? ['_csrf=' + csrf()] : [];
+    const metaCSRF = $('head>meta[name="csrf"]');
+    if(metaCSRF && this.isLocal && this.method === 'POST') {
+      if(!this.query) {
+        this.query = { _csrf : metaCSRF.attr('value') };
+      } else {
+        this.query._csrf = metaCSRF.attr('value');
+      }
+    }
+    let query = [];
     for(let key in this.query) {
       query.push(encodeURIComponent(key) + '=' + encodeURIComponent(this.query[key]));
     }
     return query.join('&');
   }
-
 }
 
-export function get(url, query = {}, toJSON = true) 
+
+export function put(url, query = false, toJSON = true) 
+{
+  if(!query) {
+    query = { _method : 'PUT' };
+  } else {
+    query._method = 'PUT';
+  }
+
+  const ajax = new Ajax(url, 'POST', query, toJSON);
+
+  return ajax.execute();
+}
+
+export function _delete(url, query = false, toJSON = true) 
+{
+  if(!query) {
+    query = { _method : 'DELETE' };
+  } else {
+    query._method = 'DELETE';
+  }
+
+  const ajax = new Ajax(url, 'POST', query, toJSON);
+
+  return ajax.execute();
+}
+
+export function get(url, query = false, toJSON = true) 
 {
   const ajax = new Ajax(url, 'GET', query, toJSON);
 
   return ajax.execute();
 }
 
-export function post(url, query = {}, toJSON = true)
+export function post(url, query = false, toJSON = true)
 {
   const ajax = new Ajax(url, 'POST', query, toJSON);
 

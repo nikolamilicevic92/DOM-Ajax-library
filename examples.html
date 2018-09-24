@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Demo</title>
+</head>
+<body>
+
+  <script src="bundle.js"></script>
+
+  <script>
+    //Ajax calls
+    _get('/resource/1')
+      .then(res => console.log('Here is the result: ', res));
+
+    _post('/resource', {title: 'Title', body : 'Lorem ipsum'})
+      .then(res => console.log('Resource created'))
+
+    _put('/resource/5', {title: 'New Title'})
+      .then(res => console.log('Resource updated'))
+
+    _delete('/resource/5')
+      .then(res => console.log('Resource deleted'));
+
+    //Creating dom elements
+    make('h1')
+    //Fetch elements in a querySelector format
+    $('h1')
+    //Add an optional text inside it
+    make('h1', 'An awesome title')
+    //Get the text of an element
+    $('h1').text()
+    //Set the text of an element
+    $('h1').text('The best title')
+    //Give it a class in a process of creating it
+    make('h1.title', 'An awesome title')
+    //Give it a class and an id
+    make('h1#best.title', 'The best title')
+    //Append h1 to the body
+    make('h1').appendTo($('body'))
+    //Get inner html of an element
+    $('body').html()
+    //Set inner html of an element
+    $('body').html('<h1>What a title</h1>')
+    //Append something into an element
+    $('body').append([make('h1', 'Such a title')])
+    //Prepend something into an element
+    $('body').prepend([make('h1', 'Such a title')])
+    //Remove the element from the DOM
+    $('h1').die();
+    //Remove a descendant
+    $('body').remove($('h1'));
+    //Fetch a descendant
+    $('body').get('h1');
+    //Listen for events, add some css
+    $('.title').on('click', title => title.css({color: 'red'}))
+    //Set attributes
+    make('input').attr('type', text).appendTo($('body'))
+    //Get attributes
+    $('input').attr('type')
+    //Get the actual element
+    $('input').dom()
+    //Add/Remove/Toggle classes
+    $('input').addClass('form-control').removeClass('form-control')
+    $('input').on('keyup', input => input.toggleClass('a-class'));     
+
+  </script>
+</body>
+</html>
